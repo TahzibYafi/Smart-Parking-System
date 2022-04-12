@@ -104,7 +104,7 @@ class MainWindow(QtWidgets.QMainWindow, user_ui.Ui_MainWindow):
      
                 
     def update_temp(self):
-        # Start the subscription loop for temperatre
+        # Start the subscription loop for temperature
         self.client.subscribe("TAY642_temperature")
         self.client.on_message = self.on_message
         self.client.loop(1)
