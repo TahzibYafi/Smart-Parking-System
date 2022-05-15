@@ -1,3 +1,8 @@
+"""
+Tahzib Yafi
+"""
+
+# Libraries for PyQt5 and MQTT client
 from PyQt5 import QtWidgets, QtGui, QtCore
 import sys
 import user_ui
@@ -5,6 +10,7 @@ from PyQt5.QtWidgets import QMessageBox
 import paho.mqtt.client as mqtt
 import time
 
+# Broker to be used
 mqttBroker = "broker.hivemq.com"
 
 class MainWindow(QtWidgets.QMainWindow, user_ui.Ui_MainWindow):
@@ -17,7 +23,7 @@ class MainWindow(QtWidgets.QMainWindow, user_ui.Ui_MainWindow):
         self.client.connect(mqttBroker)
         self.setupUi(self)
         
-        # Call the 2 subscription functions in the background
+        # Call the 2 subscription functions every 5ms
         self.timer_temp = QtCore.QTimer()
         self.timer_temp.timeout.connect(self.update_temp)
         self.timer_temp.start(5)
@@ -26,7 +32,7 @@ class MainWindow(QtWidgets.QMainWindow, user_ui.Ui_MainWindow):
         self.timer_parking.timeout.connect(self.update_parking)
         self.timer_parking.start(5)
         
-        # Pushbutton 1 sends message of PA, pushbutton 2 activates warning and pushbutton 3 removes warning
+        # Pushbutton_1 sends PA's message, pushbutton_2 activates warning and pushbutton_3 removes warning
         self.pushButton_1.clicked.connect(self.send_PAmsg)
         self.pushButton_2.clicked.connect(self.raise_warning)
         self.pushButton_3.clicked.connect(self.remove_warning)
@@ -36,10 +42,19 @@ class MainWindow(QtWidgets.QMainWindow, user_ui.Ui_MainWindow):
         Send out whatever is written in the textbox for PA
         """
         self.client.publish("TAY642_PAmessage",self.plainTextEdit.toPlainText())
+
+    def setParkingState(self, textbrowser, occupied):
+        """
+        Change the parking state text browser to RED if it is occupied, GREEN otherwise
+        """
+        if occupied:
+            textbrowser.setStyleSheet("background-color: rgb(239, 41, 41);border-radius: 20px;")
+        else:
+            textbrowser.setStyleSheet("background-color: rgb(17, 166, 48);border-radius: 20px;")
         
     def raise_warning(self):
         """
-        Display warning on in the GUI and publish it
+        Display 'warning on' in the GUI and publish a 1
         """
         self.plainTextEdit_2.setPlainText("WARNING ON!!")
         self.plainTextEdit_2.setStyleSheet("background-color: rgb(255, 255, 255);")
@@ -48,7 +63,7 @@ class MainWindow(QtWidgets.QMainWindow, user_ui.Ui_MainWindow):
         
     def remove_warning(self):
         """
-        Display warning off in the GUI and publish it
+        Display 'warning off' in the GUI and publish a 0
         """
         self.plainTextEdit_2.setPlainText("WARNING OFF")
         self.plainTextEdit_2.setStyleSheet("background-color: rgb(255, 255, 255);")
@@ -71,46 +86,27 @@ class MainWindow(QtWidgets.QMainWindow, user_ui.Ui_MainWindow):
             except ValueError:
                 print("error: Not a number")
             
-        # Indicate which of the 5 parking lots are empty or full, GREEN = empty and RED = full
+        # Indicate which of the 5 parking lots are empty or full
         if message.topic=="TAY642_parkingState":
             global parked_cars
             parked_cars = message.payload.decode("utf-8")
             parkingState = parked_cars.split(",")
         
-            if(int(parkingState[0])):
-                self.textBrowser_1.setStyleSheet("background-color: rgb(239, 41, 41);border-radius: 20px;")
-            else:
-                self.textBrowser_1.setStyleSheet("background-color: rgb(17, 166, 48);border-radius: 20px;")
-
-            if(int(parkingState[1])):
-                self.textBrowser_2.setStyleSheet("background-color: rgb(239, 41, 41);border-radius: 20px;")
-            else:
-                self.textBrowser_2.setStyleSheet("background-color: rgb(17, 166, 48);border-radius: 20px;")
-
-            if(int(parkingState[2])):
-                self.textBrowser_3.setStyleSheet("background-color: rgb(239, 41, 41);border-radius: 20px;")
-            else:
-                self.textBrowser_3.setStyleSheet("background-color: rgb(17, 166, 48);border-radius: 20px;")
-
-            if(int(parkingState[3])):
-                self.textBrowser_4.setStyleSheet("background-color: rgb(239, 41, 41);border-radius: 20px;")
-            else:
-                self.textBrowser_4.setStyleSheet("background-color: rgb(17, 166, 48);border-radius: 20px;")    
-
-            if(int(parkingState[4])):
-                self.textBrowser_5.setStyleSheet("background-color: rgb(239, 41, 41);border-radius: 20px;")
-            else:
-                self.textBrowser_5.setStyleSheet("background-color: rgb(17, 166, 48);border-radius: 20px;")   
+            self.setParkingState(self.textBrowser_1,int(parkingState[0]))
+            self.setParkingState(self.textBrowser_2,int(parkingState[1]))
+            self.setParkingState(self.textBrowser_3,int(parkingState[2]))
+            self.setParkingState(self.textBrowser_4,int(parkingState[3]))
+            self.setParkingState(self.textBrowser_5,int(parkingState[4]))
      
                 
     def update_temp(self):
-        # Start the subscription loop for temperature
+        # Subscribe to receive temperature
         self.client.subscribe("TAY642_temperature")
         self.client.on_message = self.on_message
         self.client.loop(1)
         
     def update_parking(self):
-         # Start the subscription loop for parking state
+        # Subscribe to receive the parking state
         self.client.subscribe("TAY642_parkingState")
         self.client.on_message = self.on_message
         self.client.loop(1)
